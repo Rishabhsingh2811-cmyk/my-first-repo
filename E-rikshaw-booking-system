@@ -1,0 +1,217 @@
+from flask import Flask, render_template, request, redirect, session
+import json, os
+
+app = Flask(__name__)
+app.secret_key = "mysecret"
+
+
+# -----------------------------
+# JSON File Helpers
+# -----------------------------
+def load_data(filename):
+    if not os.path.exists(filename):
+        with open(filename, "w") as f:
+            json.dump([], f)
+
+    with open(filename, "r") as f:
+        return json.load(f)
+
+
+def save_data(filename, data):
+    with open(filename, "w") as f:
+        json.dump(data, f, indent=4)
+
+
+# -----------------------------
+# ROUTES
+# -----------------------------
+@app.route("/")
+def home():
+    if "user" in session:
+        return redirect("/dashboard")
+    return render_template("login.html")
+
+
+# LOGIN
+@app.route("/login", methods=["POST"])
+def login():
+    users = load_data("users.json")
+
+    uid = request.form.get("uid")
+    email = request.form.get("email")
+    password = request.form.get("password")
+
+    for u in users:
+        if u.get("uid") == uid and u.get("email") == email and u.get("password") == password:
+            session["user"] = u["name"]
+            session["email"] = u["email"]
+            session["uid"] = u["uid"]
+            return redirect("/dashboard")
+
+    return render_template("login.html", error="Invalid UID, Email, or Password")
+
+
+# SIGNUP
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "POST":
+        users = load_data("users.json")
+
+        new_user = {
+            "uid": request.form.get("uid"),
+            "name": request.form.get("name"),
+            "email": request.form.get("email"),
+            "password": request.form.get("password")
+        }
+
+        users.append(new_user)
+        save_data("users.json", users)
+
+        return redirect("/")
+
+    return render_template("signup.html")
+
+
+# DASHBOARD
+@app.route("/dashboard")
+def dashboard():
+    if "user" not in session:
+        return redirect("/")
+    return render_template("dashboard.html", user=session["user"])
+
+
+
+# -----------------------------
+# BOOKING PROCESS
+# -----------------------------
+@app.route("/book", methods=["GET", "POST"])
+def book():
+    if "user" not in session:
+        return redirect("/")
+
+    if request.method == "POST":
+        autos = load_data("autos.json")
+
+        # find first available auto
+        selected_auto = None
+        for a in autos:
+            if a["status"] == "available":
+                selected_auto = a
+                break
+
+        if selected_auto is None:
+            return render_template("book.html", error="No autos available right now")
+
+        # TEMP BOOKING STORED IN SESSION FOR PAYMENT
+        session["pending_booking"] = {
+            "user": session["email"],
+            "pickup": request.form.get("pickup"),
+            "drop": request.form.get("drop"),
+            "auto_id": selected_auto["id"],
+            "driver": selected_auto["driver"],
+            "fare": 15
+        }
+
+        return redirect("/payment")
+
+    return render_template("book.html")
+
+
+
+# -----------------------------
+# PAYMENT PAGE
+# -----------------------------
+@app.route("/payment", methods=["GET", "POST"])
+def payment():
+    if "pending_booking" not in session:
+        return redirect("/dashboard")
+
+    booking = session["pending_booking"]
+
+    if request.method == "POST":
+        bookings = load_data("bookings.json")
+        autos = load_data("autos.json")
+
+        booking["status"] = "booked"
+        bookings.append(booking)
+        save_data("bookings.json", bookings)
+
+        # Auto becomes busy
+        for a in autos:
+            if a["id"] == booking["auto_id"]:
+                a["status"] = "busy"
+        save_data("autos.json", autos)
+
+        session.pop("pending_booking")
+
+        return redirect("/arriving")
+
+    return render_template("payment.html", booking=booking)
+
+
+
+# -----------------------------
+# ARRIVAL PAGE WITH TIMER
+# -----------------------------
+@app.route("/arriving")
+def arriving():
+    if "user" not in session:
+        return redirect("/")
+    return render_template("arriving.html")
+
+
+
+# -----------------------------
+# VIEW BOOKINGS
+# -----------------------------
+@app.route("/bookings")
+def view_bookings():
+    if "user" not in session:
+        return redirect("/")
+
+    bookings = load_data("bookings.json")
+    my_bookings = [b for b in bookings if b["user"] == session["email"]]
+
+    return render_template("bookings.html", bookings=my_bookings)
+
+
+
+# -----------------------------
+# CANCEL BOOKING
+# -----------------------------
+@app.route("/cancel/<int:index>")
+def cancel_booking(index):
+    bookings = load_data("bookings.json")
+    autos = load_data("autos.json")
+
+    if index < len(bookings):
+        auto_id = bookings[index]["auto_id"]
+
+        for a in autos:
+            if a["id"] == auto_id:
+                a["status"] = "available"
+
+        bookings[index]["status"] = "cancelled"
+
+        save_data("autos.json", autos)
+        save_data("bookings.json", bookings)
+
+    return redirect("/bookings")
+
+
+
+# -----------------------------
+# LOGOUT
+# -----------------------------
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/")
+
+
+
+# -----------------------------
+# RUN APP
+# -----------------------------
+if __name__ == "__main__":
+    app.run(debug=True)
