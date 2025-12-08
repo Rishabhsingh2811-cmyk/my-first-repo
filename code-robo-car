@@ -1,0 +1,189 @@
+#include <Servo.h>
+
+#define Echo 3
+#define Trig 2
+#define motor 5
+#define Speed 170
+#define spoint 103
+
+char value;
+int distance;
+int Left;
+int Right;
+int L = 0;
+int R = 0;
+int L1 = 0;
+int R1 = 0;
+Servo servo;
+
+// Motor Driver Pins
+#define ENA 6   // Enable motor A
+#define ENB 12   // Enable motor B
+#define IN1 7   // Motor A input 1
+#define IN2 8   // Motor A input 2
+#define IN3 9   // Motor B input 1
+#define IN4 10  // Motor B input 2
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(Trig, OUTPUT);
+  pinMode(Echo, INPUT);
+  servo.attach(motor);
+  
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  
+  analogWrite(ENA, Speed);
+  analogWrite(ENB, Speed);
+}
+
+void loop() {
+  //Obstacle();
+  //Bluetoothcontrol();
+  //voicecontrol();
+}
+
+void Bluetoothcontrol() {
+  if (Serial.available() > 0) {
+    value = Serial.read();
+    Serial.println(value);
+  }
+  if (value == 'F') {
+    forward();
+  } else if (value == 'B') {
+    backward();
+  } else if (value == 'L') {
+    left();
+  } else if (value == 'R') {
+    right();
+  } else if (value == 'S') {
+    Stop();
+  }
+}
+
+void Obstacle() {
+  distance = ultrasonic();
+  if (distance <= 12) {
+    Stop();
+    backward();
+    delay(100);
+    Stop();
+    L = leftsee();
+    servo.write(spoint);
+    delay(800);
+    R = rightsee();
+    servo.write(spoint);
+    if (L < R) {
+      right();
+      delay(500);
+      Stop();
+      delay(200);
+    } else if (L > R) {
+      left();
+      delay(500);
+      Stop();
+      delay(200);
+    }
+  } else {
+    forward();
+  }
+}
+
+void voicecontrol() {
+  if (Serial.available() > 0) {
+    value = Serial.read();
+    Serial.println(value);
+    if (value == '^') {
+      forward();
+    } else if (value == '-') {
+      backward();
+    } else if (value == '<') {
+      L = leftsee();
+      servo.write(spoint);
+      if (L >= 10 ) {
+        left();
+        delay(500);
+        Stop();
+      } else if (L < 10) {
+        Stop();
+      }
+    } else if (value == '>') {
+      R = rightsee();
+      servo.write(spoint);
+      if (R >= 10 ) {
+        right();
+        delay(500);
+        Stop();
+      } else if (R < 10) {
+        Stop();
+      }
+    } else if (value == '*') {
+      Stop();
+    }
+  }
+}
+
+// Ultrasonic sensor distance reading function
+int ultrasonic() {
+  digitalWrite(Trig, LOW);
+  delayMicroseconds(4);
+  digitalWrite(Trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(Trig, LOW);
+  long t = pulseIn(Echo, HIGH);
+  long cm = t / 29 / 2; //time convert distance
+  return cm;
+}
+
+void forward() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void backward() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void right() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void left() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void Stop() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
+int rightsee() {
+  servo.write(20);
+  delay(800);
+  Left = ultrasonic();
+  return Left;
+}
+
+int leftsee() {
+  servo.write(180);
+  delay(800);
+  Right = ultrasonic();
+  return Right;
+}
