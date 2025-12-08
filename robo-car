@@ -1,0 +1,28 @@
+# 🤖🚗 Smart Robocar — Bluetooth + Ultrasonic Obstacle Avoidance
+
+This project is a smart Arduino-based **Bluetooth-controlled Robocar** that can also **automatically avoid obstacles** using an HC-SR04 ultrasonic sensor.  
+Control the robot manually using a mobile app (via HC-05), or put it on Automatic Mode for self-driving obstacle detection.
+
+---
+
+## 🔥 Features
+- 📱 **Bluetooth manual control** (Forward, Backward, Left, Right)
+- 🧠 **Automatic obstacle avoidance** mode using HC-SR04
+- ⚙️ L298N motor driver for dual DC motors
+- 🔁 Easy mode switching: Manual ↔ Automatic
+- 👨‍💻 Beginner-friendly Arduino code
+- 🔋 Works on 6–12V motor power
+
+---
+
+## 🧰 Components Used
+| Component | Quantity |
+| Arduino UNO / Nano | 1 |
+| HC-SR04 Ultrasonic Sensor | 1 |
+| HC-05 Bluetooth Module | 1 |
+| L298N Motor Driver | 1 |
+| DC Motors + Wheels | 2 |
+| Chassis + Battery Pack | 1 |
+
+---
+
